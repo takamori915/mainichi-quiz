@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* 単体で動かすための最小リセット */
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; font: 14px system-ui, sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>まいにちクイズ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
+<style>
+/* 構成: 1画面1問。上にさし絵、下に問題と大きな選択ボタン。空色と雲の白に、答えの黄色を添える */
+:root {
+  --sky: #cfe9f7;
+  --sky-deep: #8fc8e8;
+  --cloud: #ffffff;
+  --ink: #1f3b57;
+  --ink-soft: #52708a;
+  --bg: #f4fafd;
+  --card: #ffffff;
+  --line: #c9dfec;
+  --accent: #f2b632;
+  --accent-ink: #4a3300;
+  --good: #2f8f5b;
+  --good-bg: #dff3e7;
+  --warn: #b5541a;
+  --warn-bg: #fdebdc;
+  --ground: #bcd9a8;
+  --font: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sky: #1d3a55; --sky-deep: #2d5b82; --cloud: #e8f1f8; --ink: #e6f1fa; --ink-soft: #a5bdd0;
+    --bg: #0f1f2e; --card: #172c40; --line: #2c4a64; --accent: #f2c35a; --accent-ink: #3a2a00;
+    --good: #7fd6a3; --good-bg: #1b3d2d; --warn: #f0b184; --warn-bg: #43291a; --ground: #3d5b3a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --sky: #1d3a55; --sky-deep: #2d5b82; --cloud: #e8f1f8; --ink: #e6f1fa; --ink-soft: #a5bdd0;
+  --bg: #0f1f2e; --card: #172c40; --line: #2c4a64; --accent: #f2c35a; --accent-ink: #3a2a00;
+  --good: #7fd6a3; --good-bg: #1b3d2d; --warn: #f0b184; --warn-bg: #43291a; --ground: #3d5b3a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font);
+  padding-block: 16px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  line-height: 1.7; font-size: 18px;
+}
+.wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { font-weight: 900; font-size: 20px; letter-spacing: .04em; }
+.progress { display: flex; gap: 6px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: var(--line); }
+.dot.now { background: var(--sky-deep); }
+.dot.done { background: var(--accent); }
+.art { border-radius: 20px; overflow: hidden; background: var(--sky); border: 2px solid var(--line); }
+.art svg { display: block; width: 100%; height: auto; }
+.card { background: var(--card); border: 2px solid var(--line); border-radius: 20px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.tag { align-self: flex-start; background: var(--accent); color: var(--accent-ink); font-weight: 900; padding: 2px 14px; border-radius: 999px; font-size: 16px; letter-spacing: .06em; }
+h1, h2 { margin: 0; text-wrap: balance; line-height: 1.5; }
+h1 { font-size: 28px; font-weight: 900; }
+h2 { font-size: 24px; font-weight: 900; }
+p { margin: 0; }
+.story { display: flex; flex-direction: column; gap: 8px; }
+.story p { font-size: 19px; }
+.btn {
+  font-family: inherit; font-weight: 700; font-size: 20px; min-height: 60px; width: 100%;
+  border-radius: 16px; border: 2px solid var(--line); background: var(--card); color: var(--ink);
+  padding: 10px 16px; cursor: pointer; text-align: center;
+}
+.btn:focus-visible { outline: 4px solid var(--accent); outline-offset: 2px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 900; }
+.btn.primary[disabled] { opacity: .45; cursor: default; }
+.btn.ghost { min-height: 48px; font-size: 17px; width: auto; align-self: flex-start; display: inline-flex; gap: 8px; align-items: center; }
+.btn.ghost.sm { min-height: 40px; font-size: 15px; padding: 4px 12px; }
+.daylist { display: flex; flex-direction: column; gap: 10px; }
+.btn.day { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 2px; align-items: center; text-align: left; padding: 12px 16px; }
+.btn.day .tag { grid-row: 1 / span 2; align-self: center; }
+.btn.day .dt { color: var(--ink-soft); font-size: 15px; font-weight: 500; }
+.btn.day .tt { font-size: 22px; font-weight: 900; grid-column: 2; }
+.lab { font-weight: 700; font-size: 16px; }
+.field { font-family: inherit; font-size: 20px; width: 100%; min-height: 56px; padding: 10px 14px; border-radius: 14px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
+.field:focus-visible { outline: 4px solid var(--accent); outline-offset: 2px; }
+.field.area { min-height: 110px; font-size: 14px; resize: vertical; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 4px 12px; border-radius: 999px; border: 2px solid var(--line); font-size: 15px; font-weight: 700; color: var(--ink-soft); }
+.chip.ok { border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.chip.miss { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.runrow { display: grid; grid-template-columns: auto 1fr auto; column-gap: 12px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); font-size: 16px; }
+.runrow .rt { color: var(--ink-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+.runrow .rn { min-width: 0; overflow-wrap: anywhere; }
+.runrow .rs { font-weight: 900; font-variant-numeric: tabular-nums; }
+.btn.day .mk { grid-column: 1 / -1; color: var(--warn); font-size: 14px; font-weight: 700; }
+.btn.day .nt { grid-column: 1 / -1; color: var(--ink-soft); font-size: 14px; font-weight: 500; }
+.bookline { font-size: 24px; font-weight: 700; line-height: 1.9; }
+.nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.btn.ghost[disabled] { opacity: .4; cursor: default; }
+.tools { display: flex; flex-wrap: wrap; gap: 10px; }
+.choices { display: flex; flex-direction: column; gap: 10px; }
+.choice.sel { border-color: var(--sky-deep); background: var(--sky); }
+.choice.ok { border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.choice.ng { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.fb { border-radius: 16px; padding: 12px 16px; font-weight: 700; }
+.fb.ok { background: var(--good-bg); color: var(--good); }
+.fb.ng { background: var(--warn-bg); color: var(--warn); }
+.fb .big { font-size: 24px; font-weight: 900; display: block; }
+.fb .small { font-weight: 500; color: var(--ink); display: block; margin-top: 2px; }
+.stars { display: flex; gap: 8px; justify-content: center; }
+.stars svg { width: 48px; height: 48px; }
+.note { color: var(--ink-soft); font-size: 16px; }
+.talk { background: var(--sky); border-radius: 16px; padding: 14px 16px; }
+@media (prefers-reduced-motion: no-preference) {
+  .whale { animation: float 5s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+(function () {
+  var app = document.getElementById('app');
+
+  // 家庭学習用のオリジナル問題。あらすじは自分の言葉でまとめたもの
+  // クイズの中身は quizzes/*.json から読み込む(下の loadQuizzes)
+  var story = [], prompts = [], qs = [];
+
+  var st = { i: -1, sel: [], tries: 0, done: false, res: [], first: {}, wrongShown: false, showStory: false, cur: null, screen: 'home', run: null, map: null, confirmDel: false };
+
+  var quizzes = [], loadFailed = false;
+
+  // ---- クイズの読み込み(quizzes/index.json と、そこに書かれた各 JSON) ----
+  function str(v, max) { return typeof v === 'string' ? v.slice(0, max || 200) : null; }
+  function unesc(s) {
+    return String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  }
+  function resolveArt(sp) {
+    if (!sp || typeof sp !== 'object') return null;
+    var n = function (v) { v = Math.floor(Number(v)); return isFinite(v) ? v : 0; };
+    var a = n(sp.a), b = n(sp.b), c = n(sp.c);
+    if (sp.type === 'dots' && a >= 1 && b >= 1 && c >= 0 && a + b <= 10 && c <= a + b) return dotsRow(a, b, c);
+    if (sp.type === 'tenFrame' && a >= 1 && a <= 10 && b >= 1 && b <= 10) {
+      var mode = sp.mode === 'solved' && a + b >= 10 ? 'solved' : 'setup';
+      return tenFrame(a, b, mode);
+    }
+    if (sp.type === 'plusMinus') return plusMinusArt();
+    if (sp.type === 'scene' && /^(title|kids|away|happy|cloud)$/.test(String(sp.kind))) return scene(sp.kind);
+    return null;
+  }
+  function cleanQuiz(z) {
+    if (!z || typeof z !== 'object') return null;
+    var id = str(z.id, 80);
+    if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) return null;
+    var title = str(z.title, 40), date = str(z.date, 40), subject = str(z.subject, 20);
+    if (!title || !date || !subject) return null;
+    if (!Array.isArray(z.story) || !z.story.length || z.story.length > 12) return null;
+    var story = [], i, j;
+    for (i = 0; i < z.story.length; i++) { var l = str(z.story[i], 400); if (l == null) return null; story.push(esc(l)); }
+    var prompts = [];
+    if (Array.isArray(z.prompts)) z.prompts.slice(0, 12).forEach(function (p) { prompts.push(esc(str(p, 200) || '')); });
+    if (!Array.isArray(z.qs) || !z.qs.length || z.qs.length > 20) return null;
+    var qs = [];
+    for (i = 0; i < z.qs.length; i++) {
+      var q = z.qs[i];
+      if (!q || typeof q !== 'object') return null;
+      var tag = str(q.tag, 30), text = str(q.text, 300), hint = str(q.hint, 300);
+      if (!tag || !text || !hint || !Array.isArray(q.choices) || q.choices.length < 2 || q.choices.length > 6) return null;
+      var choices = [];
+      for (j = 0; j < q.choices.length; j++) { var ch = str(q.choices[j], 40); if (!ch) return null; choices.push(esc(ch)); }
+      if (!Array.isArray(q.answer) || !q.answer.length || q.answer.length > 2) return null;
+      var answer = [];
+      for (j = 0; j < q.answer.length; j++) {
+        var an = q.answer[j];
+        if (typeof an !== 'number' || an % 1 !== 0 || an < 0 || an >= choices.length) return null;
+        answer.push(an);
+      }
+      var multi = q.multi === true;
+      if (multi ? answer.length !== 2 : answer.length !== 1) return null;
+      var art = q.art ? resolveArt(q.art) : null;
+      qs.push({ tag: esc(tag), text: esc(text), say: str(q.say, 300) || '', choices: choices, answer: answer, multi: multi,
+        scene: /^(title|kids|away|happy|cloud)$/.test(String(q.scene)) ? q.scene : 'kids', art: art || undefined, hint: esc(hint) });
+    }
+    var pageArts = null;
+    if (Array.isArray(z.pageArts) && z.pageArts.length === story.length) {
+      pageArts = z.pageArts.map(resolveArt);
+      if (pageArts.some(function (x) { return !x; })) pageArts = null;
+    }
+    return { id: id, date: esc(date), subject: esc(subject), title: esc(title), titleRaw: title, note: esc(str(z.note, 100) || ''),
+      bookLabel: z.bookLabel ? esc(str(z.bookLabel, 20) || 'おはなし') : undefined,
+      story: story, prompts: prompts, pageArts: pageArts, qs: qs };
+  }
+  function loadQuizzes() {
+    var opt = { cache: 'no-cache' };
+    return fetch('quizzes/index.json', opt).then(function (r) {
+      if (!r.ok) throw new Error('index');
+      return r.json();
+    }).then(function (list) {
+      if (!Array.isArray(list)) throw new Error('index');
+      var names = list.filter(function (f) { return typeof f === 'string' && /^[A-Za-z0-9_.-]+\.json$/.test(f); }).slice(0, 200);
+      return Promise.all(names.map(function (f) {
+        return fetch('quizzes/' + f, opt).then(function (r) {
+          if (!r.ok) throw new Error(f);
+          return r.json();
+        }).then(cleanQuiz).catch(function () { return null; });
+      }));
+    }).then(function (arr) {
+      quizzes = arr.filter(Boolean).sort(function (x, y) { return x.id < y.id ? -1 : x.id > y.id ? 1 : 0; });
+    }).catch(function () { loadFailed = true; quizzes = []; });
+  }
+
+  // ---- 音声 ----
+  var noticeTimer = null;
+  function notice(msg) {
+    var n = document.getElementById('notice');
+    if (!n) {
+      n = document.createElement('div'); n.id = 'notice'; n.setAttribute('role', 'status');
+      n.style.cssText = 'position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;max-width:488px;margin:0 auto;background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 16px;font-size:16px;font-weight:700;';
+      document.body.appendChild(n);
+    }
+    n.textContent = msg; n.hidden = false;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function () { n.hidden = true; }, 8000);
+  }
+  function pickVoice() {
+    var vs = [];
+    try { vs = window.speechSynthesis.getVoices() || []; } catch (e) {}
+    for (var k = 0; k < vs.length; k++) { if (vs[k].lang && vs[k].lang.replace('_', '-').toLowerCase().indexOf('ja') === 0) return vs[k]; }
+    return null;
+  }
+  function speak(t) {
+    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+      notice('この がめんでは よみあげが つかえません。ブラウザ(Safari・Chrome)で ひらいて みてください。');
+      return;
+    }
+    try {
+      t = unesc(t).replace(/＋|\+/g, ' たす ').replace(/−/g, ' ひく ').replace(/＝|=/g, ' は ');
+      var ss = window.speechSynthesis, started = false;
+      ss.cancel();
+      if (ss.paused) ss.resume();
+      var u = new SpeechSynthesisUtterance(t);
+      u.lang = 'ja-JP'; u.rate = 0.85; u.volume = 1;
+      var v = pickVoice(); if (v) u.voice = v;
+      u.onstart = function () { started = true; };
+      u.onerror = function () { if (!started) notice('こえが だせませんでした。ブラウザで ひらくか、おんりょうを かくにんしてください。'); };
+      setTimeout(function () { ss.speak(u); }, 60);
+      setTimeout(function () {
+        if (!started) notice('こえが でない ときは、おんりょうと マナーモードを かくにんするか、ブラウザ(Safari・Chrome)で ひらいてください。');
+      }, 2500);
+    } catch (e) {
+      notice('こえが だせませんでした。ブラウザで ひらいて みてください。');
+    }
+  }
+  try { if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = function () {}; } catch (e) {}
+
+  // ---- さし絵(オリジナル) ----
+  function scene(kind) {
+    var sx = 150, cat = true, house = false, spark = false;
+    if (kind === 'away') { sx = 250; cat = false; house = true; }
+    if (kind === 'happy') { sx = 190; cat = false; spark = true; }
+    if (kind === 'cloud') { sx = 200; cat = false; }
+    var s = '<svg viewBox="0 0 400 220" role="img" aria-label="かたつむりと あおむしの さし絵">';
+    s += '<rect width="400" height="220" fill="var(--sky)"/>';
+    s += '<circle cx="345" cy="38" r="22" fill="var(--accent)"/>';
+    s += '<rect y="172" width="400" height="48" fill="var(--ground)"/>';
+    s += '<ellipse cx="' + sx + '" cy="172" rx="96" ry="14" fill="var(--good)"/>';
+    if (house) {
+      s += '<g fill="var(--sky-deep)"><circle cx="70" cy="150" r="17"/><circle cx="92" cy="158" r="14"/><circle cx="50" cy="160" r="13"/></g>';
+      s += '<rect x="67" y="160" width="6" height="14" fill="var(--good)"/>';
+    }
+    s += '<g transform="translate(' + sx + ',0)">';
+    s += '<ellipse cx="0" cy="162" rx="54" ry="11" fill="var(--accent)"/>';
+    s += '<circle cx="50" cy="154" r="9" fill="var(--accent)"/>';
+    s += '<path d="M54 148 L60 130 M47 147 L46 128" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" fill="none"/>';
+    s += '<circle cx="60" cy="128" r="3" fill="var(--ink)"/><circle cx="46" cy="126" r="3" fill="var(--ink)"/>';
+    s += '<circle cx="-8" cy="142" r="27" fill="var(--sky-deep)"/>';
+    s += '<g stroke="var(--ink)" stroke-width="2.5" fill="none"><circle cx="-8" cy="142" r="19"/><circle cx="-8" cy="142" r="11"/><circle cx="-8" cy="142" r="4"/></g>';
+    s += '</g>';
+    if (cat) {
+      s += '<g fill="var(--good)"><circle cx="292" cy="160" r="11"/><circle cx="310" cy="160" r="11"/><circle cx="328" cy="160" r="11"/><circle cx="346" cy="158" r="13"/></g>';
+      s += '<circle cx="350" cy="154" r="3" fill="var(--ink)"/>';
+    }
+    if (spark) {
+      s += '<g fill="var(--accent)"><circle cx="70" cy="60" r="4"/><circle cx="110" cy="38" r="3"/><circle cx="320" cy="110" r="4"/><circle cx="290" cy="80" r="3"/></g>';
+    }
+    s += '</svg>';
+    return s;
+  }
+
+  // ---- 算数のさし絵(すべてオリジナル) ----
+  function svgOpen(label) {
+    return '<svg viewBox="0 0 400 220" role="img" aria-label="' + label + '"><rect width="400" height="220" fill="var(--sky)"/>';
+  }
+  function txt(x, y, size, str, fill, anchor) {
+    return '<text x="' + x + '" y="' + y + '" text-anchor="' + (anchor || 'middle') + '" font-size="' + size +
+      '" font-weight="900" fill="' + (fill || 'var(--ink)') + '">' + str + '</text>';
+  }
+  // a こ と b こ を ならべて、さいごの c こを とる ようすの ず
+  function dotsRow(a, b, c) {
+    var n = a + b, gap = 34, extra = 16;
+    var x0 = (400 - (n * gap + extra)) / 2 + gap / 2, xs = [], i;
+    for (i = 0; i < n; i++) xs.push(x0 + i * gap + (i >= a ? extra : 0));
+    var s = svgOpen('おはじきの ずと しき');
+    s += txt(200, 62, 38, a + ' + ' + b + ' − ' + c);
+    for (i = 0; i < n; i++) {
+      var gone = i >= n - c;
+      var fill = i < a ? 'var(--sky-deep)' : 'var(--accent)';
+      if (gone) {
+        s += '<circle cx="' + xs[i] + '" cy="132" r="14" fill="' + fill + '" opacity=".28"/>';
+        s += '<path d="M' + (xs[i] - 9) + ' 123 L' + (xs[i] + 9) + ' 141 M' + (xs[i] + 9) + ' 123 L' + (xs[i] - 9) + ' 141" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>';
+      } else {
+        s += '<circle cx="' + xs[i] + '" cy="132" r="14" fill="' + fill + '"/>';
+      }
+    }
+    s += txt((xs[0] + xs[a - 1]) / 2, 182, 24, a);
+    s += txt((xs[a] + xs[n - 1]) / 2, 182, 24, b);
+    s += '</svg>';
+    return s;
+  }
+  // 10の わく(5×2)。mode: 'setup' は a こ いれた ところまで、'solved' は 10を つくった ところまで
+  function tenFrame(a, b, mode) {
+    var cell = 36, ox = 28, oy = 86, i, s = svgOpen('10の わくと おはじきの ず');
+    s += txt(200, 54, 36, a + ' + ' + b);
+    var fillTo = mode === 'solved' ? 10 : a;
+    for (i = 0; i < 10; i++) {
+      var cx = ox + (i % 5) * cell, cy = oy + Math.floor(i / 5) * cell;
+      var fill = 'none';
+      if (i < a) fill = 'var(--sky-deep)'; else if (i < fillTo) fill = 'var(--accent)';
+      s += '<rect x="' + cx + '" y="' + cy + '" width="' + cell + '" height="' + cell + '" fill="' + fill + '" stroke="var(--ink)" stroke-width="2.5"/>';
+      if (fill !== 'none') s += '<circle cx="' + (cx + cell / 2) + '" cy="' + (cy + cell / 2) + '" r="11" fill="' + (i < a ? 'var(--card)' : 'var(--card)') + '" opacity=".9"/>';
+    }
+    var rest = mode === 'solved' ? b - (10 - a) : b;
+    for (i = 0; i < rest; i++) {
+      var rx = 250 + (i % 5) * 30, ry = 100 + Math.floor(i / 5) * 34;
+      s += '<circle cx="' + rx + '" cy="' + ry + '" r="12" fill="var(--accent)"/>';
+    }
+    if (mode === 'solved') {
+      s += txt(ox + 2.5 * cell, 196, 24, '10 と ' + rest + ' で ' + (a + b));
+    } else {
+      s += txt(ox + 2.5 * cell, 196, 20, 'いれた かず ' + a);
+      s += txt(300, 196, 20, 'これから ' + b);
+    }
+    s += '</svg>';
+    return s;
+  }
+  // ふえる / へる の みわけかた
+  function plusMinusArt() {
+    var s = svgOpen('ふえる と へる の ず');
+    s += '<rect x="20" y="30" width="172" height="160" rx="18" fill="var(--good-bg)" stroke="var(--good)" stroke-width="3"/>';
+    s += '<rect x="208" y="30" width="172" height="160" rx="18" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="3"/>';
+    s += txt(106, 74, 30, 'ふえる', 'var(--good)') + txt(106, 114, 40, '＋', 'var(--good)');
+    s += txt(106, 150, 17, 'きた・もらった', 'var(--ink)') + txt(106, 174, 17, 'あわせて', 'var(--ink)');
+    s += txt(294, 74, 30, 'へる', 'var(--warn)') + txt(294, 114, 40, '−', 'var(--warn)');
+    s += txt(294, 150, 17, 'あげた・たべた', 'var(--ink)') + txt(294, 174, 17, 'いなくなった', 'var(--ink)');
+    s += '</svg>';
+    return s;
+  }
+
+  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function icon() { return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>'; }
+  function star(on) { return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z" fill="' + (on ? 'var(--accent)' : 'var(--line)') + '"/></svg>'; }
+
+  function top() {
+    var t = el('div', 'top');
+    if (!st.cur) { t.appendChild(el('div', 'brand', 'まいにちクイズ')); return t; }
+    var hb = el('button', 'btn ghost sm', '← トップ'); hb.type = 'button';
+    hb.onclick = function () { renderHome(); };
+    t.appendChild(hb);
+    t.appendChild(el('div', 'brand', st.cur.title));
+    var p = el('div', 'progress');
+    for (var k = 0; k < qs.length; k++) {
+      p.appendChild(el('div', 'dot' + (k < st.i || (k === st.i && st.done) ? ' done' : (k === st.i ? ' now' : ''))));
+    }
+    t.appendChild(p);
+    return t;
+  }
+
+  function readBtn(text) {
+    var b = el('button', 'btn ghost', icon() + '<span>よみあげ</span>');
+    b.type = 'button';
+    b.onclick = function () { speak(text); };
+    return b;
+  }
+
+  // ---- 画面 ----
+
+  // ---- なまえと きろく(この たんまつの ブラウザ だけに ほぞん) ----
+  var PKEY = 'mq-profiles-v1';
+  var store = { profiles: { list: [], current: null }, runs: {}, ok: true };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function cleanName(s) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, 12); }
+  function runsKey(id) { return 'mq-runs-' + id; }
+  function loadProfiles() {
+    var p = null;
+    try { var j = localStorage.getItem(PKEY); p = j ? JSON.parse(j) : null; } catch (e) { p = null; }
+    if (!p || !Array.isArray(p.list)) p = { list: [], current: null };
+    store.profiles = p;
+  }
+  function saveProfiles() {
+    try { localStorage.setItem(PKEY, JSON.stringify(store.profiles)); } catch (e) { store.ok = false; }
+  }
+  function currentProfile() {
+    var l = store.profiles.list;
+    for (var i = 0; i < l.length; i++) { if (l[i].id === store.profiles.current) return l[i]; }
+    return null;
+  }
+  function loadRuns() {
+    store.runs = {};
+    var p = currentProfile(); if (!p) return;
+    try { var j = localStorage.getItem(runsKey(p.id)); store.runs = j ? JSON.parse(j) : {}; } catch (e) { store.runs = {}; }
+  }
+  function saveRuns() {
+    var p = currentProfile(); if (!p) return;
+    try { localStorage.setItem(runsKey(p.id), JSON.stringify(store.runs)); } catch (e) { store.ok = false; }
+  }
+  function allRuns() {
+    return Object.keys(store.runs).map(function (id) { return store.runs[id]; })
+      .sort(function (a, b) { return a.startedAt - b.startedAt; });
+  }
+  function saveRun(run) { store.runs[run.id] = run; saveRuns(); }
+
+  function createProfile(name) {
+    var n = cleanName(name), l = store.profiles.list, i;
+    for (i = 0; i < l.length; i++) { if (l[i].name === n) { selectProfile(l[i].id, true); return l[i]; } }
+    var p = { id: 'p' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36), name: n };
+    l.push(p);
+    selectProfile(p.id, true);
+    return p;
+  }
+  function selectProfile(id, silent) {
+    store.profiles.current = id; saveProfiles(); loadRuns();
+    if (!silent) renderHome();
+  }
+  function deleteProfile(id) {
+    var l = store.profiles.list;
+    store.profiles.list = l.filter(function (p) { return p.id !== id; });
+    try { localStorage.removeItem(runsKey(id)); } catch (e) {}
+    store.profiles.current = store.profiles.list.length ? store.profiles.list[0].id : null;
+    saveProfiles(); loadRuns();
+  }
+
+  function recordRun() {
+    var z = st.cur; if (!z || !currentProfile()) return;
+    if (!st.run) {
+      st.run = { id: 'r' + Date.now(), quizId: z.id, quizTitle: z.title, subject: z.subject,
+        retry: !!st.map, startedAt: Date.now(), total: qs.length, items: {} };
+    }
+    var o = st.map ? st.map[st.i] : st.i;
+    st.run.items[o] = { first: st.first[st.i] === true, tries: st.tries, done: st.done };
+    st.run.total = qs.length;
+    st.run.updatedAt = Date.now();
+    saveRun(JSON.parse(JSON.stringify(st.run)));
+  }
+  // もんだいごとの いちばん あたらしい けっか
+  function statusMap() {
+    var m = {};
+    allRuns().forEach(function (r) {
+      var q = m[r.quizId] = m[r.quizId] || {};
+      Object.keys(r.items || {}).forEach(function (k) { q[k] = { first: !!r.items[k].first }; });
+    });
+    return m;
+  }
+  function missedIdx(z) {
+    var sm = statusMap()[z.id] || {};
+    return Object.keys(sm).filter(function (k) { return !sm[k].first; }).map(Number).sort(function (a, b) { return a - b; });
+  }
+  function startRetry(z) {
+    var miss = missedIdx(z);
+    if (!miss.length) return;
+    st.cur = z; story = z.story; prompts = z.prompts;
+    qs = miss.map(function (i) { return z.qs[i]; });
+    st.map = miss; st.run = null; st.i = 0; st.res = []; st.first = {}; st.showStory = false;
+    startQ();
+  }
+  function fmtTime(ts) {
+    try { return new Date(ts).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    catch (e) { return ''; }
+  }
+  function quizById(id) {
+    for (var i = 0; i < quizzes.length; i++) { if (quizzes[i].id === id) return quizzes[i]; }
+    return null;
+  }
+
+  // ---- 書き出し・読み込み ----
+  function payload() {
+    var p = currentProfile();
+    return { app: 'mainichi-quiz', version: 1, exportedAt: Date.now(), profile: { name: p ? p.name : '' }, runs: allRuns() };
+  }
+  function csvText() {
+    function q(v) { return '"' + String(v).replace(/"/g, '""') + '"'; }
+    var rows = [['にちじ', 'クイズ', 'しゅるい', 'やりなおし', 'もんだい', 'タイプ', '1かいで せいかい', 'かいすう'].map(q).join(',')];
+    allRuns().forEach(function (r) {
+      var z = quizById(r.quizId);
+      Object.keys(r.items || {}).sort(function (a, b) { return a - b; }).forEach(function (k) {
+        var it = r.items[k];
+        rows.push([new Date(r.startedAt).toLocaleString('ja-JP'), z ? (z.titleRaw || z.title) : r.quizId, z ? z.subject : '',
+          r.retry ? 'はい' : 'いいえ', Number(k) + 1, z && z.qs[k] ? unesc(z.qs[k].tag) : '', it.first ? 'はい' : 'いいえ', it.tries].map(q).join(','));
+      });
+    });
+    return '﻿' + rows.join('\r\n');
+  }
+  function ymd() {
+    var d = new Date(), z = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate());
+  }
+  function cleanRun(r) {
+    if (!r || typeof r !== 'object') return null;
+    var z = quizById(r.quizId);
+    if (!z || typeof r.id !== 'string' || !/^r\d{6,}$/.test(r.id) || !r.items || typeof r.items !== 'object') return null;
+    var items = {};
+    Object.keys(r.items).forEach(function (k) {
+      var n = Number(k), it = r.items[k];
+      if (!/^\d+$/.test(k) || n >= z.qs.length || !it || typeof it !== 'object') return;
+      var t = Math.max(1, Math.min(99, Math.floor(Number(it.tries) || 1)));
+      items[k] = { first: it.first === true, tries: t, done: it.done === true };
+    });
+    var s = Number(r.startedAt) || 0, u = Number(r.updatedAt) || s;
+    if (!s) return null;
+    return { id: r.id, quizId: z.id, quizTitle: z.title, subject: z.subject, retry: r.retry === true,
+      startedAt: s, updatedAt: u, total: Math.max(1, Math.min(50, Math.floor(Number(r.total) || z.qs.length))), items: items };
+  }
+  function importText(text, say) {
+    var d;
+    if (!text || text.length > 5000000) { say('よみこめませんでした。', true); return false; }
+    try { d = JSON.parse(text); } catch (e) { say('よみこめませんでした。ほぞんした ファイルか たしかめてね。', true); return false; }
+    if (!d || d.app !== 'mainichi-quiz' || !Array.isArray(d.runs)) { say('このファイルは、まいにちクイズの きろくでは ないようです。', true); return false; }
+    if (!currentProfile()) createProfile(cleanName(d.profile && d.profile.name) || 'ともだち');
+    var n = 0;
+    d.runs.forEach(function (r) {
+      var c = cleanRun(r); if (!c) return;
+      var old = store.runs[c.id];
+      if (!old || (old.updatedAt || 0) <= c.updatedAt) { store.runs[c.id] = c; n++; }
+    });
+    saveRuns();
+    say(n + ' かいぶんの きろくを よみこみました。');
+    return true;
+  }
+
+  function renderWho() {
+    st.screen = 'who'; st.cur = null; st.i = -1;
+    app.innerHTML = '';
+    app.appendChild(top());
+    app.appendChild(el('div', 'art', scene('title')));
+    var c = el('div', 'card');
+    c.appendChild(el('h1', '', 'だれが あそぶ？'));
+    var list = el('div', 'daylist');
+    store.profiles.list.forEach(function (p) {
+      var b = el('button', 'btn', esc(p.name) + ' さん'); b.type = 'button';
+      b.onclick = function () { selectProfile(p.id); };
+      list.appendChild(b);
+    });
+    if (store.profiles.list.length) c.appendChild(list);
+    var lab = el('label', 'lab', store.profiles.list.length ? 'あたらしい なまえ' : 'なまえを いれてね');
+    lab.setAttribute('for', 'newname');
+    c.appendChild(lab);
+    var inp = el('input', 'field'); inp.id = 'newname'; inp.type = 'text'; inp.maxLength = 12;
+    inp.placeholder = 'ニックネームで OK'; inp.setAttribute('autocomplete', 'off');
+    c.appendChild(inp);
+    var err = el('p', 'note', ''); err.setAttribute('role', 'status');
+    var add = el('button', 'btn primary', 'はじめる'); add.type = 'button';
+    add.onclick = function () {
+      var n = cleanName(inp.value);
+      if (!n) { err.textContent = 'なまえを いれてね。'; return; }
+      createProfile(n); renderHome();
+    };
+    c.appendChild(add);
+    c.appendChild(err);
+    c.appendChild(el('p', 'note', 'ほんみょうは いれなくて だいじょうぶ。なまえと きろくは、この たんまつの ブラウザの なかだけに のこります。'));
+    var rb = el('button', 'btn ghost', 'ほぞんした きろくを よみこむ'); rb.type = 'button';
+    rb.onclick = function () { renderBackup(); };
+    c.appendChild(rb);
+    app.appendChild(c);
+  }
+
+  function renderBackup() {
+    st.screen = 'backup'; st.cur = null; st.i = -1;
+    app.innerHTML = '';
+    app.appendChild(top());
+    var back = el('button', 'btn ghost sm', '← もどる'); back.type = 'button';
+    back.onclick = function () { if (currentProfile()) renderRecords(); else renderWho(); };
+    app.appendChild(back);
+
+    var msg = el('div', 'fb ok', ''); msg.hidden = true; msg.setAttribute('role', 'status');
+    var after = el('div', 'tools'); after.hidden = true;
+    function say(t, bad) {
+      msg.hidden = false; msg.className = 'fb ' + (bad ? 'ng' : 'ok');
+      msg.innerHTML = '<span class="small">' + esc(t) + '</span>';
+      if (!bad) {
+        after.hidden = false; after.innerHTML = '';
+        var go = el('button', 'btn primary', 'トップへ'); go.type = 'button';
+        go.onclick = function () { renderHome(); };
+        after.appendChild(go);
+      }
+    }
+
+    var p = currentProfile();
+    if (p) {
+      var ex = el('div', 'card');
+      ex.appendChild(el('h2', '', 'きろくを ほぞん'));
+      ex.appendChild(el('p', 'note', 'ファイルに ほぞんして おくと、たんまつを かえた とき、ブラウザの データを けした ときも もどせます。'));
+      var save = function (kind) {
+        var data = kind === 'csv' ? csvText() : JSON.stringify(payload(), null, 1);
+        var fn = 'mainichi-quiz-' + p.name.replace(/[\\\/:*?"<>|\s]+/g, '_') + '-' + ymd() + '.' + kind;
+        var dl = (window.claude && window.claude.use) ? window.claude.use('downloads') : Promise.resolve(null);
+        dl.then(function (d) {
+          if (!d) {
+            try {
+              var blob = new Blob([data], { type: kind === 'csv' ? 'text/csv' : 'application/json' });
+              var a = document.createElement('a');
+              a.href = URL.createObjectURL(blob); a.download = fn;
+              document.body.appendChild(a); a.click();
+              setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+              say('ほぞんしました。ダウンロードを たしかめてね。');
+            } catch (e2) { say('ファイルに ほぞんできません。「コピー」を つかってね。', true); }
+            return;
+          }
+          return d.save({ filename: fn, data: data }).then(function () { say('ほぞんしました。'); },
+            function (e) { say(e && e.code === 'declined' ? 'ほぞんを やめました。' : 'ほぞんできませんでした。「コピー」を つかってね。', true); });
+        }).catch(function () { say('ほぞんできませんでした。「コピー」を つかってね。', true); });
+      };
+      var b1 = el('button', 'btn primary', 'ファイルに ほぞん（JSON）'); b1.type = 'button';
+      b1.onclick = function () { save('json'); };
+      var b2 = el('button', 'btn', 'ひょうに ほぞん（CSV）'); b2.type = 'button';
+      b2.onclick = function () { save('csv'); };
+      var b3 = el('button', 'btn', 'コピー'); b3.type = 'button';
+      b3.onclick = function () {
+        var text = JSON.stringify(payload());
+        var fallback = function () {
+          var ta = el('textarea', 'field area'); ta.readOnly = true; ta.id = 'exporttext'; ta.value = text;
+          ex.appendChild(ta);
+          say('コピーできませんでした。したの ぶんを ぜんぶ えらんで コピーしてね。', true);
+        };
+        try { navigator.clipboard.writeText(text).then(function () { say('コピーしました。メモなどに はりつけて ほぞんしてね。'); }, fallback); }
+        catch (e) { fallback(); }
+      };
+      ex.appendChild(b1); ex.appendChild(b2); ex.appendChild(b3);
+      app.appendChild(ex);
+    }
+
+    var im = el('div', 'card');
+    im.appendChild(el('h2', '', 'きろくを よみこむ'));
+    im.appendChild(el('p', 'note', p ? '「' + esc(p.name) + '」さんの きろくに ふやします。' : 'ほぞんした ファイルの なまえで はじめます。'));
+    var lf = el('label', 'lab', 'ファイルを えらぶ'); lf.setAttribute('for', 'importfile');
+    var fi = el('input', 'field'); fi.type = 'file'; fi.id = 'importfile'; fi.accept = '.json,.txt,application/json,text/plain';
+    fi.onchange = function () {
+      var f = fi.files && fi.files[0]; if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () { importText(String(rd.result || ''), say); };
+      rd.onerror = function () { say('ファイルを よめませんでした。', true); };
+      rd.readAsText(f);
+    };
+    var lt = el('label', 'lab', 'コピーした ぶんを はりつけて よみこむ'); lt.setAttribute('for', 'importtext');
+    var ta = el('textarea', 'field area'); ta.id = 'importtext';
+    var ib = el('button', 'btn', 'よみこむ'); ib.type = 'button';
+    ib.onclick = function () { importText(ta.value, say); };
+    im.appendChild(lt); im.appendChild(ta); im.appendChild(ib);
+    im.appendChild(el('p', 'note', 'ほぞんした ファイルを ひらいて、なかみを ぜんぶ コピーして、うえの らんに はりつけても よみこめます。'));
+    im.appendChild(lf); im.appendChild(fi);
+    im.appendChild(el('p', 'note', 'ファイルを えらぶ ボタンが うごかない ときは、うえの はりつけを つかうか、ブラウザ（Safari・Chrome）で ひらいてね。'));
+    app.appendChild(im);
+    app.appendChild(msg);
+    app.appendChild(after);
+
+    if (p) {
+      var dc = el('div', 'card');
+      dc.appendChild(el('h2', '', 'この なまえを けす'));
+      if (!st.confirmDel) {
+        dc.appendChild(el('p', 'note', '「' + esc(p.name) + '」さんの きろくが ぜんぶ きえます。もとには もどせません。'));
+        var d1 = el('button', 'btn', 'けす…'); d1.type = 'button';
+        d1.onclick = function () { st.confirmDel = true; renderBackup(); };
+        dc.appendChild(d1);
+      } else {
+        dc.appendChild(el('p', 'fb ng', '<span class="big">ほんとうに けしますか？</span>'));
+        var d2 = el('button', 'btn primary', 'けす'); d2.type = 'button';
+        d2.onclick = function () { st.confirmDel = false; deleteProfile(p.id); if (currentProfile()) renderHome(); else renderWho(); };
+        var d3 = el('button', 'btn', 'やめる'); d3.type = 'button';
+        d3.onclick = function () { st.confirmDel = false; renderBackup(); };
+        dc.appendChild(d2); dc.appendChild(d3);
+      }
+      app.appendChild(dc);
+    }
+  }
+
+  function renderRecords() { renderHome(); }
+
+  // トップ画面 = きろく。まだ あそんでいなくても、ここから すぐ はじめられる
+  function renderHome() {
+    var prof = currentProfile();
+    if (!prof) { renderWho(); return; }
+    st.cur = null; st.i = -1; st.screen = 'home';
+    var sm = statusMap();
+    app.innerHTML = '';
+    app.appendChild(top());
+    app.appendChild(el('div', 'art', scene('title')));
+    var wb = el('button', 'btn ghost sm', esc(prof.name) + ' さん　▼ かえる'); wb.type = 'button';
+    wb.onclick = function () { renderWho(); };
+    app.appendChild(wb);
+
+    var head = el('div', 'card');
+    head.appendChild(el('h1', '', 'クイズと きろく'));
+    head.appendChild(el('p', 'note', store.ok
+      ? 'きろくは、この たんまつの ブラウザの なかだけに のこります。'
+      : 'この ブラウザでは きろくを のこせません。ファイルに ほぞんして ください。'));
+    var bk = el('button', 'btn', 'ほぞん・よみこみ'); bk.type = 'button';
+    bk.onclick = function () { renderBackup(); };
+    head.appendChild(bk);
+    app.appendChild(head);
+
+    if (!quizzes.length) {
+      var ec = el('div', 'card');
+      ec.appendChild(el('p', 'fb ng', '<span class="big">クイズを よみこめませんでした</span><span class="small">インターネットに つながっているか たしかめて、もういちど ひらいてね。ファイルを ひらいている ときは、ブラウザで ひらくか、サーバーを つかってね。</span>'));
+      app.appendChild(ec);
+    }
+
+    quizzes.slice().reverse().forEach(function (z) {
+      var s = sm[z.id] || {}, c = el('div', 'card');
+      c.appendChild(el('span', 'tag', z.subject));
+      c.appendChild(el('h2', '', z.title));
+      c.appendChild(el('p', 'note', z.date + (z.note ? '　' + z.note : '')));
+      var chips = el('div', 'chips'), good = 0, miss = 0;
+      z.qs.forEach(function (q, i) {
+        var it = s[i], cls = 'chip', mark = '－';
+        if (it) { if (it.first) { cls += ' ok'; mark = '○'; good++; } else { cls += ' miss'; mark = '△'; miss++; } }
+        chips.appendChild(el('span', cls, mark + ' ' + (i + 1) + ' ' + q.tag));
+      });
+      c.appendChild(chips);
+      var played = good + miss > 0;
+      c.appendChild(el('p', '', played ? '1かいで せいかい：' + good + ' / ' + z.qs.length : 'まだ あそんでいません。'));
+      if (miss > 0) {
+        var rb = el('button', 'btn primary', 'まちがえた もんだいを やりなおす（' + miss + 'もん）'); rb.type = 'button';
+        rb.onclick = function () { startRetry(z); };
+        c.appendChild(rb);
+      }
+      var pb = el('button', played ? 'btn' : 'btn primary', played ? 'はじめから あそぶ' : 'あそぶ'); pb.type = 'button';
+      pb.onclick = function () {
+        st.cur = z; story = z.story; prompts = z.prompts; qs = z.qs;
+        st.map = null; st.run = null; st.i = -1; st.res = []; st.first = {}; st.showStory = false;
+        renderStart();
+      };
+      c.appendChild(pb);
+      app.appendChild(c);
+    });
+
+    var runs = allRuns().slice().reverse().slice(0, 12);
+    var lc = el('div', 'card');
+    lc.appendChild(el('h2', '', 'さいきんの きろく'));
+    if (!runs.length) { lc.appendChild(el('p', 'note', 'クイズを とくと、ここに きろくが のこります。')); }
+    runs.forEach(function (r) {
+      var n = 0; Object.keys(r.items || {}).forEach(function (k) { if (r.items[k].first) n++; });
+      lc.appendChild(el('div', 'runrow',
+        '<span class="rt">' + esc(fmtTime(r.startedAt)) + '</span>' +
+        '<span class="rn">' + (quizById(r.quizId) ? quizById(r.quizId).title : esc(r.quizTitle)) + (r.retry ? '（やりなおし）' : '') + '</span>' +
+        '<span class="rs">' + n + ' / ' + esc(r.total) + '</span>'));
+    });
+    app.appendChild(lc);
+  }
+
+  function renderStart() { st.page = 0; renderBook(); }
+
+  function renderBook() {
+    st.screen = 'quiz';
+    var n = story.length, p = st.page;
+    var kinds = ['cloud', 'kids', 'kids', 'away'];
+    app.innerHTML = '';
+    app.appendChild(top());
+    var arts = st.cur && st.cur.pageArts;
+    app.appendChild(el('div', 'art', arts ? arts[p] : scene(kinds[p] || 'title')));
+    var c = el('div', 'card');
+    c.appendChild(el('span', 'tag', ((st.cur && st.cur.bookLabel) || 'おはなし') + '　' + (p + 1) + ' / ' + n));
+    c.appendChild(el('p', 'bookline', story[p]));
+    c.appendChild(readBtn(story[p]));
+    var nav = el('div', 'nav');
+    var pv = el('button', 'btn ghost', '← まえの ページ'); pv.type = 'button';
+    pv.disabled = p === 0;
+    pv.onclick = function () { st.page--; renderBook(); };
+    nav.appendChild(pv);
+    if (p < n - 1) {
+      var nx = el('button', 'btn ghost', 'つぎの ページ →'); nx.type = 'button';
+      nx.onclick = function () { st.page++; renderBook(); };
+      nav.appendChild(nx);
+    }
+    c.appendChild(nav);
+    if (p === n - 1) {
+      var go = el('button', 'btn primary', 'クイズに ちょうせん'); go.type = 'button';
+      go.onclick = function () { qs = st.cur.qs; st.map = null; st.run = null; st.i = 0; st.res = []; st.first = {}; startQ(); };
+      c.appendChild(go);
+    }
+    if (prompts && prompts[p]) {
+      c.appendChild(el('div', 'talk', '<strong>おうちの かたへ</strong><br>よんだあとに、こえを かけて みてください。<br>「' + prompts[p] + '」'));
+    }
+    app.appendChild(c);
+  }
+
+  function startQ() {
+    var r = st.res[st.i];
+    if (r) { st.sel = r.sel.slice(); st.tries = r.tries; st.done = r.done; }
+    else { st.sel = []; st.tries = 0; st.done = false; }
+    st.wrongShown = false;
+    renderQ();
+  }
+  function saveQ() {
+    if (st.i >= 0) st.res[st.i] = { sel: st.sel.slice(), tries: st.tries, done: st.done };
+  }
+
+  function sameSet(a, b) {
+    if (a.length !== b.length) return false;
+    var x = a.slice().sort().join(','), y = b.slice().sort().join(',');
+    return x === y;
+  }
+
+  function renderQ() {
+    saveQ();
+    var q = qs[st.i];
+    var bl = (st.cur && st.cur.bookLabel) || 'おはなし';
+    st.screen = 'quiz';
+    app.innerHTML = '';
+    app.appendChild(top());
+    app.appendChild(el('div', 'art', q.art ? q.art : scene(q.scene)));
+    var c = el('div', 'card');
+    c.appendChild(el('span', 'tag', (st.i + 1) + 'もんめ　' + q.tag));
+    c.appendChild(el('h2', '', q.text));
+    var row = el('div', 'tools');
+    row.appendChild(readBtn(q.say || (q.text + '。' + q.choices.join('、'))));
+    var sb = el('button', 'btn ghost', st.showStory ? bl + 'を とじる' : bl + 'を みる'); sb.type = 'button';
+    sb.setAttribute('aria-expanded', st.showStory ? 'true' : 'false');
+    sb.onclick = function () { st.showStory = !st.showStory; renderQ(); };
+    row.appendChild(sb);
+    c.appendChild(row);
+    if (st.showStory) {
+      var sbox = el('div', 'talk story');
+      story.forEach(function (line) { sbox.appendChild(el('p', '', line)); });
+      c.appendChild(sbox);
+    }
+
+    var list = el('div', 'choices');
+    q.choices.forEach(function (label, idx) {
+      var b = el('button', 'btn choice', label); b.type = 'button';
+      var picked = st.sel.indexOf(idx) >= 0;
+      if (picked) b.className += ' sel';
+      if (st.done) {
+        b.disabled = true;
+        if (q.answer.indexOf(idx) >= 0) b.className = 'btn choice ok';
+      } else if (st.wrongShown && picked) {
+        b.className += ' ng';
+      }
+      b.onclick = function () {
+        if (st.done) return;
+        st.wrongShown = false;
+        if (q.multi) {
+          var p = st.sel.indexOf(idx);
+          if (p >= 0) st.sel.splice(p, 1); else if (st.sel.length < 2) st.sel.push(idx);
+          renderQ();
+        } else {
+          st.sel = [idx]; judge();
+        }
+      };
+      list.appendChild(b);
+    });
+    c.appendChild(list);
+
+    if (q.multi && !st.done) {
+      var ans = el('button', 'btn primary', 'こたえる'); ans.type = 'button';
+      ans.disabled = st.sel.length !== 2;
+      ans.onclick = function () { judge(); };
+      c.appendChild(ans);
+    }
+
+    if (st.done) {
+      var f = el('div', 'fb ok', '<span class="big">せいかい！</span><span class="small">' + q.hint + '</span>');
+      f.setAttribute('role', 'status'); c.appendChild(f);
+      var nx = el('button', 'btn primary', st.i < qs.length - 1 ? 'つぎの もんだいへ' : 'けっかを みる'); nx.type = 'button';
+      nx.onclick = function () { if (st.i < qs.length - 1) { st.i++; startQ(); } else renderEnd(); };
+      c.appendChild(nx);
+    } else if (st.wrongShown) {
+      var w = el('div', 'fb ng', '<span class="big">おしい！ もういちど</span><span class="small">ヒント：' + q.hint + '</span>');
+      w.setAttribute('role', 'status'); c.appendChild(w);
+    }
+    var nav = el('div', 'nav');
+    var pv = el('button', 'btn ghost', '← まえの もんだい'); pv.type = 'button';
+    pv.disabled = st.i === 0;
+    pv.onclick = function () { st.i--; startQ(); };
+    nav.appendChild(pv);
+    if (!st.done && st.i < qs.length - 1) {
+      var nt = el('button', 'btn ghost', 'つぎの もんだい →'); nt.type = 'button';
+      nt.onclick = function () { st.i++; startQ(); };
+      nav.appendChild(nt);
+    }
+    c.appendChild(nav);
+    app.appendChild(c);
+  }
+
+  function judge() { judge0(); recordRun(); }
+  function judge0() {
+    var q = qs[st.i];
+    st.tries++;
+    if (sameSet(st.sel, q.answer)) {
+      if (st.tries === 1) st.first[st.i] = true;
+      st.done = true; st.wrongShown = false;
+    } else {
+      st.wrongShown = true;
+      if (q.multi) { /* 選びなおせるよう選択は残す */ }
+    }
+    renderQ();
+  }
+
+  function renderEnd() {
+    st.screen = 'quiz';
+    app.innerHTML = '';
+    app.appendChild(top());
+    app.appendChild(el('div', 'art', scene('title')));
+    var c = el('div', 'card');
+    c.appendChild(el('h1', '', 'よく できました！'));
+    var n = 0; for (var q0 = 0; q0 < qs.length; q0++) { if (st.first[q0]) n++; }
+    var sv = ''; for (var k = 0; k < qs.length; k++) sv += star(k < n);
+    c.appendChild(el('div', 'stars', sv));
+    c.appendChild(el('p', 'note', 'いっかいで せいかいした かずが、ほしの かずです（' + n + ' / ' + qs.length + '）。'));
+    c.appendChild(el('div', 'talk', '<strong>おうちの かたへ</strong><br>さいごに「だれが でてきた？」「どこへ いった？」「さいごは どうなった？」と きいて、おはなしを ことばで まとめて もらってください。ことばが でなくても だいじょうぶ。さし絵を ゆびさすだけでも ふり返りに なります。'));
+    var again = el('button', 'btn', 'もういちど あそぶ'); again.type = 'button';
+    again.onclick = function () { st.i = -1; renderStart(); };
+    c.appendChild(again);
+    var rec = el('button', 'btn', 'トップへ もどる'); rec.type = 'button';
+    rec.onclick = function () { renderRecords(); };
+    c.appendChild(rec);
+    app.appendChild(c);
+  }
+
+  try { if ('speechSynthesis' in window) window.speechSynthesis.getVoices(); } catch (e) {}
+  loadProfiles(); loadRuns();
+  app.innerHTML = '<div class="card"><p>よみこみちゅう…</p></div>';
+  loadQuizzes().then(function () { if (currentProfile()) renderHome(); else renderWho(); });
+})();
+</script>
+
+</body>
+</html>
